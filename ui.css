@@ -1,0 +1,56 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+.container {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+.container label {
+    display: block;
+    margin-top: 10px;
+}
+.container input, .container button, .container select {
+    display: block;
+    width: 100%;
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+.container button {
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+}
+.container button:hover {
+    background-color: #0056b3;
+}
+.result {
+    margin-top: 20px;
+    font-weight: bold;
+}
+.tag-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+.tag {
+    background-color: #007bff;
+    color: #fff;
+    border-radius: 3px;
+    padding: 5px 10px;
+    display: flex;
+    align-items: center;
+}
+.tag .remove-tag {
+    margin-left: 10px;
+    cursor: pointer;
+}

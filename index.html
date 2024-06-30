@@ -3,157 +3,232 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href='ui.css' rel='stylesheet' />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <title>Satellite Location Calculator</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-        .container {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        .container label {
-            display: block;
-            margin-top: 10px;
-        }
-        .container input, .container button {
-            display: block;
-            width: 100%;
-            margin: 10px 0;
-            padding: 10px;
-            border-radius: 4px;
-            border: 1px solid #ccc;
-        }
-        .container button {
-            background-color: #007bff;
-            color: #fff;
-            border: none;
-        }
-        .container button:hover {
-            background-color: #0056b3;
-        }
-        .result {
-            margin-top: 20px;
-            font-weight: bold;
-        }
-    </style>
 </head>
 <body>
     <div class="container">
         <h2>Satellite Location Calculator</h2>
-        <label for="northAngle">Enter North Angle</label>
-        <input type="number" id="northAngle" placeholder="North Angle">
-        <label for="elevationAngle">Enter Elevation Angle</label>
-        <input type="number" id="elevationAngle" placeholder="Elevation Angle">
-        <label for="satelliteLongitude">Enter Satellite Longitude</label>
-        <input type="number" id="satelliteLongitude" placeholder="Satellite Longitude">
+        <label for="northAngle">Enter North Angle (or range)</label>
+        <input type="text" id="northAngle" placeholder="e.g., 30 or 30-40">
+        <label for="elevationAngle">Enter Elevation Angle (or range)</label>
+        <input type="text" id="elevationAngle" placeholder="e.g., 30 or 30-40">
+        <label for="countryInput">Enter Countries</label>
+        <input type="text" id="countryInput" placeholder="Type a country and press enter">
+        <div id="countryTags" class="tag-container"></div>
+        <label for="satelliteSelector">Select Satellite</label>
+        <select id="satelliteSelector"></select>
         <button onclick="calculateLocation()">Calculate Location</button>
         <div class="result" id="result"></div>
     </div>
-
+    <div id="map" style="height: 400px; width: 100%;"></div>
+    <script src="satellites.js"></script>
+    <script src="ui.js"></script>
+    <script src="core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
     <script>
-        function calculateElevation(satelliteLongitude, earthStationLatitude, earthStationLongitude) {
-            const longitudeDifferenceRad = (earthStationLongitude - satelliteLongitude) / 57.29578;
-            const latitudeRad = earthStationLatitude / 57.29578;
-            const r1 = 1 + 35786 / 6378.16;
-            const term1 = r1 * Math.cos(latitudeRad) * Math.cos(longitudeDifferenceRad) - 1;
-            const term2 = r1 * Math.sqrt(1 - Math.cos(latitudeRad)**2 * Math.cos(longitudeDifferenceRad)**2);
-            let elevationAngle = 57.29578 * Math.atan(term1 / term2);
-
-            if (elevationAngle < 30) {
-                return (elevationAngle + Math.sqrt(elevationAngle**2 + 4.132)) / 2;
-            } else {
-                return elevationAngle;
-            }
-        }
-
-        function calculateAzimuth(satelliteLongitude, earthStationLatitude, earthStationLongitude) {
-            const radiansConversionFactor = 57.29578;
-            const longitudeDifferenceRad = (earthStationLongitude - satelliteLongitude) / radiansConversionFactor;
-            const latitudeRad = earthStationLatitude / radiansConversionFactor;
-            
-            let azimuthAngle = 180 + radiansConversionFactor * Math.atan(Math.tan(longitudeDifferenceRad) / Math.sin(latitudeRad));
-
-            if (earthStationLatitude < 0) {
-                azimuthAngle -= 180;
-            }
-            if (azimuthAngle < 0) {
-                azimuthAngle += 360.0;
-            }
-
-            return azimuthAngle;
-        }
-
-        function isPointInBounds(lat, lon, bounds) {
-            var [bX, bY, bWidth, bHeight] = bounds;
-            var east = bX + bWidth;
-            var north = bY + bHeight;
-            return (lon >= bX && lon <= east) && (lat >= bY && lat <= north);
-        }
-
-        function errorFunction(params, targetAzimuth, targetElevation, satelliteLongitude) {
-            const [latitude, longitude] = params;
-            const calculatedElevation = calculateElevation(satelliteLongitude, latitude, longitude);
-            if (calculatedElevation <= 0) {
-                return Number.POSITIVE_INFINITY;
-            }
-            const calculatedAzimuth = calculateAzimuth(satelliteLongitude, latitude, longitude);
-            return Math.pow(calculatedElevation - targetElevation, 2) + Math.pow(calculatedAzimuth - targetAzimuth, 2);
-        }
-
-        function findLocation(targetAzimuth, targetElevation, satelliteLongitude) {
-            const initialGuess = [0, 0];
-            const result = minimize(errorFunction, initialGuess, targetAzimuth, targetElevation, satelliteLongitude);
-            const [latitude, longitude] = result;
-            return { latitude, longitude };
-        }
-
-        function minimize(errorFunction, initialGuess, targetAzimuth, targetElevation, satelliteLongitude) {
-            let bestParams = initialGuess;
-            let minError = Number.POSITIVE_INFINITY;
-
-            // Coarse Search
-            for (let lat = -60; lat <= 60; lat += 1.0) {
-                for (let lon = -180; lon <= 180; lon += 1.0) {
-                    const error = errorFunction([lat, lon], targetAzimuth, targetElevation, satelliteLongitude);
-                    if (error < minError) {
-                        minError = error;
-                        bestParams = [lat, lon];
-                    }
+        document.getElementById('countryInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                const country = e.target.value.trim();
+                if (country) {
+                    addTag(country);
+                    e.target.value = '';
                 }
             }
-
-            // Fine-tuning around the bestParams found in coarse search
-            const [bestLat, bestLon] = bestParams;
-            for (let lat = bestLat - 1; lat <= bestLat + 1; lat += 0.01) {
-                for (let lon = bestLon - 1; lon <= bestLon + 1; lon += 0.01) {
-                    const error = errorFunction([lat, lon], targetAzimuth, targetElevation, satelliteLongitude);
-                    if (error < minError) {
-                        minError = error;
-                        bestParams = [lat, lon];
-                    }
-                }
-            }
-
-            return bestParams;
-        }
+        });
 
         function calculateLocation() {
-            const northAngle = parseFloat(document.getElementById('northAngle').value);
-            const elevationAngle = parseFloat(document.getElementById('elevationAngle').value);
-            const satelliteLongitude = parseFloat(document.getElementById('satelliteLongitude').value);
+            const northAngleInput = document.getElementById('northAngle').value;
+            const elevationAngleInput = document.getElementById('elevationAngle').value;
+            const satelliteName = document.getElementById('satelliteSelector').value;
+            const countries = Array.from(document.getElementById('countryTags').children).map(tag => tag.textContent.replace(' x', ''));
 
-            const { latitude, longitude } = findLocation(northAngle, elevationAngle, satelliteLongitude);
-            document.getElementById('result').innerText = `${latitude.toFixed(10)}, ${longitude.toFixed(10)}`;
+            const elevationAngleRange = parseRange(elevationAngleInput);
+            const northAngleRange = parseRange(northAngleInput);
+
+            // Find the satellite data
+            let satelliteLongitude;
+            let satelliteData;
+            for (const group in sat_db) {
+                sat_db[group].forEach(satellite => {
+                    if (satellite.sat === satelliteName) {
+                        satelliteLongitude = parseFloat(satellite.long);
+                        satelliteData = satellite;
+                    }
+                });
+            }
+
+            if (!satelliteData && satelliteName != '') {
+                alert('Satellite not found.');
+                return;
+            }
+
+            if (!northAngleInput && satelliteLongitude !== undefined) {
+                const minDistance = calculateDistanceFromSatellite(elevationAngleRange[0]);
+                const maxDistance = calculateDistanceFromSatellite(elevationAngleRange[1]);
+                
+                // Clear existing circles and polygons
+                map.eachLayer((layer) => {
+                    if (layer instanceof L.Circle || layer instanceof L.Polygon) {
+                        map.removeLayer(layer);
+                    }
+                });
+
+                // Create circles in EPSG:3857 projection
+                const center = L.CRS.EPSG3857.unproject(L.point(satelliteLongitude * 20037508.34 / 180, 0));
+                const minRadius = minDistance * 1000; // Convert km to meters
+                const maxRadius = maxDistance * 1000; // Convert km to meters
+
+                // Draw inner circle
+                const innerCircle = L.circle(center, {
+                    radius: minRadius,
+                    color: 'red',
+                    weight: 2,
+                    opacity: 0.35,
+                    fill: false
+                }).addTo(map);
+
+                // Draw outer circle
+                const outerCircle = L.circle(center, {
+                    radius: maxRadius,
+                    color: 'red',
+                    weight: 2,
+                    opacity: 0.35,
+                    fill: false
+                }).addTo(map);
+
+                // Create a polygon to highlight the area between the circles
+                const polygonCoords = [];
+                const steps = 64; // Number of points to approximate the circle
+
+                for (let i = 0; i <= steps; i++) {
+                    const angle = (i / steps) * 2 * Math.PI;
+                    const innerPoint = [
+                        center.lat + (minRadius / 111319) * Math.cos(angle),
+                        center.lng + (minRadius / (111319 * Math.cos(center.lat * Math.PI / 180))) * Math.sin(angle)
+                    ];
+                    polygonCoords.push(innerPoint);
+                }
+
+                for (let i = steps; i >= 0; i--) {
+                    const angle = (i / steps) * 2 * Math.PI;
+                    const outerPoint = [
+                        center.lat + (maxRadius / 111319) * Math.cos(angle),
+                        center.lng + (maxRadius / (111319 * Math.cos(center.lat * Math.PI / 180))) * Math.sin(angle)
+                    ];
+                    polygonCoords.push(outerPoint);
+                }
+
+                L.polygon(polygonCoords, {
+                    color: 'red',
+                    weight: 0,
+                    fillColor: 'red',
+                    fillOpacity: 0.2
+                }).addTo(map);
+
+                // Adjust map view
+                map.fitBounds(outerCircle.getBounds(), { padding: [50, 50] });
+
+                // Display result
+                const resultContainer = document.getElementById('result');
+                resultContainer.innerHTML = `Possible locations form an area between two circles centered at (0°, ${satelliteLongitude.toFixed(2)}°) with radii of ${minDistance.toFixed(2)} km and ${maxDistance.toFixed(2)} km`;
+
+                return;  // Exit the function early
+            }
+            const results = [];
+
+            for (const group in sat_db) {
+                sat_db[group].forEach(satellite => {
+                    if (satellite.sat === satelliteName) {
+                        satelliteLongitude = parseFloat(satellite.long);
+                        satelliteData = satellite;
+                    }
+                });
+            }
+
+            if (!satelliteData && satelliteName != '') {
+                alert('Satellite not found.');
+                return;
+            }
+
+            // Use the findLocation function to get the best guess
+            if (satelliteName === '') {
+                for (const group in sat_db) {
+                    sat_db[group].forEach(satellite => {
+                        const { latitude, longitude } = findLocation(northAngleRange[0], elevationAngleRange[0], parseFloat(satellite.long));
+
+                        console.log(`Guessed Coordinates: Latitude ${latitude}, Longitude ${longitude}`);
+
+                        // Check if the guessed location is within any band's coverage
+                        let locationInCoverage = false;
+                        for (const band in satellite.bands) {
+                            for (const coverage of satellite.bands[band].coverage) {
+                                coverage.features.forEach(feature => {
+                                    if (isPointInBounds(latitude, longitude, feature.bbox)) {
+                                        console.log(`Within BBOX: ${feature.bbox}`);
+                                        if (pointInPolygon(feature.geometry, [longitude, latitude])) {
+                                            console.log(`Within Polygon: ${feature.geometry}`);
+                                            locationInCoverage = true;
+                                            results.push({ lat: latitude, lon: longitude });
+                                        }
+                                    }
+                                });
+                            }
+                            if (locationInCoverage) break;
+                        }
+                    });
+                }
+            } else {
+                const { latitude, longitude } = findLocation(northAngleRange[0], elevationAngleRange[0], satelliteLongitude);
+
+                console.log(`Guessed Coordinates: Latitude ${latitude}, Longitude ${longitude}`);
+
+                // Check if the guessed location is within any band's coverage
+                let locationInCoverage = false;
+                for (const band in satelliteData.bands) {
+                    for (const coverage of satelliteData.bands[band].coverage) {
+                        coverage.features.forEach(feature => {
+                            if (isPointInBounds(latitude, longitude, feature.bbox)) {
+                                console.log(`Within BBOX: ${feature.bbox}`);
+                                if (pointInPolygon(feature.geometry, [longitude, latitude])) {
+                                    console.log(`Within Polygon: ${feature.geometry}`);
+                                    locationInCoverage = true;
+                                    results.push({ lat: latitude, lon: longitude });
+                                }
+                            }
+                        });
+                    }
+                    if (locationInCoverage) break;
+                }
+            }
+
+            // Visualize satellite coverage areas
+            if (satelliteData) {
+                for (const band in satelliteData.bands) {
+                    for (const coverage of satelliteData.bands[band].coverage) {
+                        coverage.features.forEach(feature => {
+                            L.geoJSON(feature.geometry, {
+                                style: {
+                                    fillColor: 'rgba(255, 0, 0, 0.2)',
+                                    color: 'red',
+                                    weight: 1
+                                }
+                            }).addTo(map);
+                        });
+                    }
+                }
+            }
+
+            displayResults(results);
         }
+        window.onload = function() {
+            initMap();
+            populateCountryInput();
+            populateSatellitesDropdown();
+        };
     </script>
+    <div id="map" style="height: 400px; width: 100%;"></div>
 </body>
 </html>
