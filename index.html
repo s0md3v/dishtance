@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-geometryutil@0.10.0/src/leaflet.geometryutil.js"></script>
+    <link href='styles.css' rel='stylesheet' />
+    <script src="satellites.js"></script>
+    <script src="topology.js"></script>
+    <script src="ui.js"></script>
+    <script src="map.js"></script>
+    <script src="core.js"></script>
+    <script src="script.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/tokml@0.4.0/tokml.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.css" />
+    <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://unpkg.com/topojson-client@3"></script>
+    <title>Dishtance</title>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="logo-container">
+                <img src="dishtance.png" alt="Dishtance Logo" class="logo">
+            </div>
+            <label for="northAngle">North Angle</label>
+            <input type="text" id="northAngle" placeholder="Enter North Angle">
+            
+            <label for="elevationAngle">Elevation Angle</label>
+            <input type="text" id="elevationAngle" placeholder="Enter Elevation Angle">
+            
+            <label for="countryInput">Countries to Search</label>
+            <input type="text" id="countryInput" placeholder="Type a country and press Enter">
+            
+            <div id="countryTags" class="tag-container"></div>
+            <label>Bands:</label>
+            <div id="bandSelector">
+                <div class="band-options">
+                    <label>C<input type="checkbox" name="band" value="C" checked></label>
+                    <label>Ka<input type="checkbox" name="band" value="Ka" checked></label>
+                    <label>Ku<input type="checkbox" name="band" value="Ku" checked></label>
+                    <label>L<input type="checkbox" name="band" value="L" checked></label>
+                    <label>S<input type="checkbox" name="band" value="S" checked></label>
+                    <label>X<input type="checkbox" name="band" value="X" checked></label>
+                </div>
+            </div>
+            
+            <label for="satelliteSelector">Satellite</label>
+            <select id="satelliteSelector"></select>
+            
+            <button id="calculateButton" onclick="calculateLocation()">Calculate Location</button>
+            <button id="exportButton" onclick="exportData()">Export to KML</button>
+        </div>
+        <div id="map"></div>
+    </div>
+</body>
+</html>
