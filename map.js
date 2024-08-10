@@ -133,8 +133,8 @@ function processArea(northAngleRange, elevationAngleRange, satellite, intersecte
 
     const triangleABC = turf.polygon([[
         center,
-        [pointB.latitude, pointB.longitude],
-        [pointC.latitude, pointC.longitude],
+        [pointB.longitude, pointB.latitude],
+        [pointC.longitude, pointC.latitude],
         center
     ]]);
 
