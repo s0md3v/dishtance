@@ -37,14 +37,19 @@ function populateCountryInput() {
 function populateSatellitesDropdown() {
     const satelliteSelector = document.getElementById('satelliteSelector');
     satelliteSelector.innerHTML = '<option value="">I don\'t know</option>';
+    const satelliteList = [];
     for (const group in sat_db) {
         sat_db[group].forEach(satellite => {
-            const option = document.createElement('option');
-            option.value = satellite.sat;
-            option.text = satellite.sat;
-            satelliteSelector.appendChild(option);
+            satelliteList.push(satellite.sat);
         });
     }
+    satelliteList.sort((a, b) => a.localeCompare(b));
+    satelliteList.forEach(satellite => {
+        const option = document.createElement('option');
+        option.value = satellite;
+        option.text = satellite;
+        satelliteSelector.appendChild(option);
+    });
 }
 
 function getSelectedCountries() {
